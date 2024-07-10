@@ -1,0 +1,3 @@
+[submodule "sha1_cracker"]
+	path = sha1_cracker
+	url = /Users/nadheer/Desktop/black_hat_script/rust_for_cybersecurity/sha1_cracker
