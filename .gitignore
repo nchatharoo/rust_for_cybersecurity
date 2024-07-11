@@ -1,1 +1,16 @@
-/target
+**/target
+
+**/*.rs.bk
+**/*.d
+
+**/*.swp
+**/*.swo
+**/*~
+
+**/.idea/
+**/.vscode/
+**/*.vscode
+
+**/CACHEDIR.TAG
+
+**/.zed/
