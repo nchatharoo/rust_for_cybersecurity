@@ -1,5 +1,17 @@
 use std::fs;
 use serde_json;
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize)]
+pub struct Pattern {
+    pub name: String,
+    pub regex: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Patterns {
+    pub patterns: Vec<Pattern>,
+}
 
 impl Patterns {
     pub fn from_file(file_path: &str) -> Self {
