@@ -1,20 +1,28 @@
 use patterns::Patterns;
 use patterns::Pattern;
+pub mod githubfile;
 pub mod patterns;
 use regex::Regex;
 use walkdir::WalkDir;
 use std::fs;
+use std::env;
 use git2::Repository;
+use reqwest::{blocking::Client};
+use crate::githubfile::GithubFile;
 
 fn main() {
     println!("cargo:rustc-link-search=libgit2");
     let patterns = Patterns::from_file("patterns.json");
-    let dir = std::env::args().nth(1).expect("Please provide a directory");
-
-    if std::path::Path::new(&dir).join(".git").exists() {
-        scan_git_repo(&dir, &patterns);
+    let arg = env::args().nth(1).expect("Please provide a directory or URL");
+    
+    if arg.starts_with("https://github.com/") {
+        scan_github_repo(&arg, &patterns);
     } else {
-        scan_directory(&dir, &patterns);
+        if std::path::Path::new(&arg).join(".git").exists() {
+            scan_git_repo(&arg, &patterns);
+        } else {
+            scan_directory(&arg, &patterns);
+        }    
     }
 }
 
@@ -56,5 +64,49 @@ fn scan_git_repo(repo_path: &str, patterns: &Patterns) {
             }
             git2::TreeWalkResult::Ok
         }).expect("Tree walk failed");
+    }
+}
+
+fn scan_github_repo(repo_url: &String, patterns: &Patterns) {
+    let repo_url = repo_url.trim_end_matches('/');
+    let api_url = format!("{}/contents", repo_url.replace("https://github.com/", "https://api.github.com/repos/"));
+    let http_client = Client::new();
+
+    // For debug
+    let response_text = http_client
+        .get(&api_url)
+        .header("User-Agent", "request")
+        .send()
+        .expect("Failed to send request")
+        .text()
+        .expect("Failed to read response text");
+
+        println!("Raw response: {}", response_text);
+
+    let response: Vec<GithubFile> = serde_json::from_str(&response_text).expect("Failed to parse JSON");
+
+    for file in response {
+        if file.file_type == "file" {
+            if let Some(download_url) = file.download_url {
+                println!("Analyzing file: {}", file.file_type);
+
+                // Skip images
+                if file.file_type.ends_with(".png") || file.file_type.ends_with(".jpg") || file.file_type.ends_with(".jpeg") || file.file_type.ends_with(".gif") {
+                    continue;
+                }
+
+                let content = http_client
+                .get(&download_url)
+                .header("User-Agent", "request")
+                .send()
+                .expect("Failed to send request")
+                .json::<String>()
+                .expect("Failed to parse JSON");
+
+                for pattern in &patterns.patterns {
+                    detect_secret(&file.path, &content, pattern);
+                }           
+            }
+        }
     }
 }
