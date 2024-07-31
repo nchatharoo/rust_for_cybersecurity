@@ -11,7 +11,6 @@ use reqwest::{blocking::Client};
 use crate::githubfile::GithubFile;
 
 fn main() {
-    println!("cargo:rustc-link-search=libgit2");
     let patterns = Patterns::from_file("patterns.json");
     let arg = env::args().nth(1).expect("Please provide a directory or URL");
     
@@ -81,31 +80,34 @@ fn scan_github_repo(repo_url: &String, patterns: &Patterns) {
         .text()
         .expect("Failed to read response text");
 
-        println!("Raw response: {}", response_text);
+        
+    // println!("Raw response: {}", response_text);
 
     let response: Vec<GithubFile> = serde_json::from_str(&response_text).expect("Failed to parse JSON");
 
     for file in response {
         if file.file_type == "file" {
             if let Some(download_url) = file.download_url {
-                println!("Analyzing file: {}", file.file_type);
-
+                
                 // Skip images
-                if file.file_type.ends_with(".png") || file.file_type.ends_with(".jpg") || file.file_type.ends_with(".jpeg") || file.file_type.ends_with(".gif") {
+                if download_url.ends_with(".png") || download_url.ends_with(".jpg") || download_url.ends_with(".jpeg") || download_url.ends_with(".gif") {
+                    println!("Skipping binary file: {}", download_url);
                     continue;
                 }
+
+                println!("GET file URL: {:?}", download_url);                
 
                 let content = http_client
                 .get(&download_url)
                 .header("User-Agent", "request")
                 .send()
                 .expect("Failed to send request")
-                .json::<String>()
+                .text()
                 .expect("Failed to parse JSON");
 
                 for pattern in &patterns.patterns {
                     detect_secret(&file.path, &content, pattern);
-                }           
+                }
             }
         }
     }
