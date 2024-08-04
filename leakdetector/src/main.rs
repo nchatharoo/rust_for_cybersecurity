@@ -1,14 +1,14 @@
-use patterns::Patterns;
-use patterns::Pattern;
 pub mod githubfile;
 pub mod patterns;
+use patterns::Patterns;
+use patterns::Pattern;
 use regex::Regex;
 use walkdir::WalkDir;
 use std::fs;
 use std::env;
 use git2::Repository;
 use reqwest::Client;
-use crate::githubfile::GithubFile;
+use githubfile::GithubFile;
 use tokio;
 
 #[tokio::main]
