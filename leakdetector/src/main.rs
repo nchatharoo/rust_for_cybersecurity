@@ -7,15 +7,17 @@ use walkdir::WalkDir;
 use std::fs;
 use std::env;
 use git2::Repository;
-use reqwest::{blocking::Client};
+use reqwest::Client;
 use crate::githubfile::GithubFile;
+use tokio;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let patterns = Patterns::from_file("patterns.json");
     let arg = env::args().nth(1).expect("Please provide a directory or URL");
     
     if arg.starts_with("https://github.com/") {
-        scan_github_repo(&arg, &patterns);
+        scan_github_repo(&arg, &patterns).await;
     } else {
         if std::path::Path::new(&arg).join(".git").exists() {
             scan_git_repo(&arg, &patterns);
@@ -66,7 +68,7 @@ fn scan_git_repo(repo_path: &str, patterns: &Patterns) {
     }
 }
 
-fn scan_github_repo(repo_url: &String, patterns: &Patterns) {
+async fn scan_github_repo(repo_url: &String, patterns: &Patterns) {
     let repo_url = repo_url.trim_end_matches('/');
     let api_url = format!("{}/contents", repo_url.replace("https://github.com/", "https://api.github.com/repos/"));
     let http_client = Client::new();
@@ -76,8 +78,10 @@ fn scan_github_repo(repo_url: &String, patterns: &Patterns) {
         .get(&api_url)
         .header("User-Agent", "request")
         .send()
+        .await
         .expect("Failed to send request")
         .text()
+        .await
         .expect("Failed to read response text");
 
         
@@ -101,8 +105,10 @@ fn scan_github_repo(repo_url: &String, patterns: &Patterns) {
                 .get(&download_url)
                 .header("User-Agent", "request")
                 .send()
+                .await
                 .expect("Failed to send request")
                 .text()
+                .await
                 .expect("Failed to parse JSON");
 
                 for pattern in &patterns.patterns {
