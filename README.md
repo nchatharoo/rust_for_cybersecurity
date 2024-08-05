@@ -9,7 +9,6 @@ This repository contains a Rust-based tool designed to detect secrets in code re
 ## Prerequisites
 
 - Rust and Cargo installed.
-- A GitHub personal access token for scanning private repositories.
 
 ## Installation
 
